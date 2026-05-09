@@ -15,9 +15,9 @@ services:
     container_name: alexguedes-postgres
 
     environment:
-      POSTGRES_DB: authdb
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
     ports:
       - "5432:5432"
@@ -38,10 +38,10 @@ services:
     ports:
       - "8080:8080"
     environment:
-      REDIS_HOST: redis
-      VALIDATE_SERVICE_URL: http://validate-service:8081
-      AUTH_SERVICE_URL: http://auth-service:8082
-      SIGNER_SERVICE_URL: http://signer-service:8083
+      REDIS_HOST: ${REDIS_HOST}
+      VALIDATE_SERVICE_URL: ${VALIDATE_SERVICE_URL}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      SIGNER_SERVICE_URL: ${SIGNER_SERVICE_URL}
     depends_on:
       - redis
       - validate-service
@@ -55,9 +55,9 @@ services:
     ports:
       - "8081:8081"
     environment:
-      REDIS_HOST: redis
-      HMAC_CLIENT_KEY: demo-key
-      HMAC_CLIENT_SECRET: demo-secret
+      REDIS_HOST: ${REDIS_HOST}
+      HMAC_CLIENT_KEY: ${HMAC_CLIENT_KEY}
+      HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET}
     depends_on:
       - redis
 
@@ -70,11 +70,11 @@ services:
       - "8082:8082"
 
     environment:
-      JWT_SECRET: change-me-to-a-very-long-secret-key-32-bytes
+      JWT_SECRET: ${JWT_SECRET}
 
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/authdb
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
 
     depends_on:
       postgres:
@@ -87,7 +87,7 @@ services:
     ports:
       - "8083:8083"
     environment:
-      HMAC_CLIENT_SECRET: demo-secret
+      HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET}
 
   prometheus:
     image: prom/prometheus:v2.54.1
