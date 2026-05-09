@@ -1,0 +1,16 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: signer-service
+
+app:
+  hmac:
+    client-secret: ${HMAC_CLIENT_SECRET:demo-secret}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

@@ -1,0 +1,23 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: validate-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+app:
+  hmac:
+    client-key: ${HMAC_CLIENT_KEY:demo-key}
+    client-secret: ${HMAC_CLIENT_SECRET:demo-secret}
+    allowed-skew: ${HMAC_ALLOWED_SKEW:PT5M}
+    nonce-ttl: ${HMAC_NONCE_TTL:PT10M}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

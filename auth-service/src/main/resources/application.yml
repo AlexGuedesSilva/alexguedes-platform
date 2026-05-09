@@ -1,0 +1,36 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: auth-service
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/authdb}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-to-a-very-long-secret-key-32-bytes}
+    expires-in-seconds: ${JWT_EXPIRES_IN_SECONDS:3600}
+  refresh-token:
+    expires-in-seconds: ${REFRESH_TOKEN_EXPIRES_IN_SECONDS:604800}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

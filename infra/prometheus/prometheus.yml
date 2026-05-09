@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: gateway
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["gateway:8080"]
+
+  - job_name: validate-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["validate-service:8081"]
+
+  - job_name: auth-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["auth-service:8082"]
+
+  - job_name: signer-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["signer-service:8083"]
