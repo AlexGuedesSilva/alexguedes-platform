@@ -18,13 +18,97 @@ The next step is to implement repositories, application services and HTTP endpoi
 
 ## Package Direction
 
+The service follows a package-by-capability direction. Instead of organizing the
+whole codebase only by technical layers, each major authentication concern gets
+its own package. This makes the project easier to study because each folder
+answers one business question: login, permissions, users, sessions, tokens,
+API keys, audit or infrastructure.
+
 ```text
-com.alexguedes.platform.identity
+auth-service-v2
+|
++-- src/main/java/com/alexguedes/platform/identity
+    |
+    +-- authentication
+    |   +-- api
+    |   +-- application
+    |   +-- domain
+    |   +-- infrastructure
+    |
+    +-- authorization
+    |   +-- api
+    |   +-- application
+    |   +-- domain
+    |   +-- infrastructure
+    |
+    +-- identity
+    |   +-- api
+    |   +-- application
+    |   +-- domain
+    |   +-- infrastructure
+    |
+    +-- session
+    |   +-- api
+    |   +-- application
+    |   +-- domain
+    |   +-- infrastructure
+    |
+    +-- token
+    |   +-- api
+    |   +-- application
+    |   +-- domain
+    |   +-- infrastructure
+    |
+    +-- apikey
+    |   +-- api
+    |   +-- application
+    |   +-- domain
+    |   +-- infrastructure
+    |
+    +-- audit
+    |   +-- api
+    |   +-- application
+    |   +-- domain
+    |   +-- infrastructure
+    |
+    +-- shared
+    |   +-- config
+    |   +-- constants
+    |   +-- exception
+    |   +-- response
+    |
+    +-- infrastructure
+        +-- observability
+        +-- persistence
+        +-- redis
+        +-- security
+```
+
+### Package Responsibilities
+
+| Package | Responsibility |
+| --- | --- |
+| `authentication` | Login, credential validation, password checks and authentication flows. |
+| `authorization` | Roles, permissions, access rules and authorization decisions. |
+| `identity` | User profile, account status, registration and identity lifecycle. |
+| `session` | User sessions, session revocation and active session tracking. |
+| `token` | Access tokens, refresh tokens, token rotation, JWT/JWKS evolution. |
+| `apikey` | API key creation, ownership, hashing, listing and revocation. |
+| `audit` | Security-sensitive event records such as login, logout, token refresh and API key actions. |
+| `shared` | Reusable service-level helpers such as responses, exceptions, constants and common configuration. |
+| `infrastructure` | Cross-cutting technical adapters such as database, Redis, security wiring, metrics and external integrations. |
+
+### Internal Package Pattern
+
+Feature packages may use the same internal structure when the feature becomes
+large enough:
+
+```text
+feature
 |
 +-- api
 |   +-- controller
 |   +-- dto
-|   +-- exception
 |
 +-- application
 |   +-- service
@@ -39,9 +123,15 @@ com.alexguedes.platform.identity
 |   +-- repository
 |   +-- security
 |   +-- persistence
-|
-+-- shared
 ```
+
+- `api`: HTTP controllers and request/response DTOs.
+- `application`: use cases and orchestration of domain rules.
+- `domain`: business model, value objects, policies and domain rules.
+- `infrastructure`: database repositories, external clients, framework adapters and persistence details.
+
+Small packages do not need all four folders immediately. They should grow only
+when there is real code to place there.
 
 ## Domain Model
 
