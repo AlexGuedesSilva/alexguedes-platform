@@ -1,0 +1,105 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+
+  postgres:
+    image: postgres:16
+
+    container_name: alexguedes-postgres
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      VALIDATE_SERVICE_URL: ${VALIDATE_SERVICE_URL}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      SIGNER_SERVICE_URL: ${SIGNER_SERVICE_URL}
+    depends_on:
+      - redis
+      - validate-service
+      - auth-service
+      - signer-service
+
+  validate-service:
+    build:
+      context: ..
+      dockerfile: validate-service/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      HMAC_CLIENT_KEY: ${HMAC_CLIENT_KEY}
+      HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET}
+    depends_on:
+      - redis
+
+  auth-service:
+    build:
+      context: ..
+      dockerfile: auth-service/Dockerfile
+
+    ports:
+      - "8082:8082"
+
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  signer-service:
+    build:
+      context: ..
+      dockerfile: signer-service/Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET}
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - gateway
+      - validate-service
+      - auth-service
+      - signer-service
+
+volumes:
+  postgres_data:

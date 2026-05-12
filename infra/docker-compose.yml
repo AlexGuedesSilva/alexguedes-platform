@@ -1,105 +1,208 @@
-version: "3.9"
+  version: "3.9"
 
-services:
-  redis:
-    image: redis:7
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
-    ports:
-      - "6379:6379"
-    volumes:
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+  services:
 
-  postgres:
-    image: postgres:16
+    # =========================================================
+    # REDIS
+    # Cache, session storage, revoke tokens, rate limit
+    # =========================================================
+    redis:
+      image: redis:7
 
-    container_name: alexguedes-postgres
+      container_name: alexguedes-redis
 
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
 
-    ports:
-      - "5432:5432"
+      ports:
+        - "6379:6379"
 
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      volumes:
+        - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
 
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # =========================================================
+    # POSTGRES
+    # Banco central da plataforma
+    #
+    # Databases:
+    # - authdb_v1
+    # - authdb_v2
+    # =========================================================
+    postgres:
+      image: postgres:16
 
-  gateway:
-    build:
-      context: ..
-      dockerfile: gateway/Dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      REDIS_HOST: ${REDIS_HOST}
-      VALIDATE_SERVICE_URL: ${VALIDATE_SERVICE_URL}
-      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
-      SIGNER_SERVICE_URL: ${SIGNER_SERVICE_URL}
-    depends_on:
-      - redis
-      - validate-service
-      - auth-service
-      - signer-service
+      container_name: alexguedes-postgres
 
-  validate-service:
-    build:
-      context: ..
-      dockerfile: validate-service/Dockerfile
-    ports:
-      - "8081:8081"
-    environment:
-      REDIS_HOST: ${REDIS_HOST}
-      HMAC_CLIENT_KEY: ${HMAC_CLIENT_KEY}
-      HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET}
-    depends_on:
-      - redis
+      environment:
+        POSTGRES_DB: postgres
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
 
-  auth-service:
-    build:
-      context: ..
-      dockerfile: auth-service/Dockerfile
+      ports:
+        - "5432:5432"
 
-    ports:
-      - "8082:8082"
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
 
-    environment:
-      JWT_SECRET: ${JWT_SECRET}
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
 
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    # =========================================================
+    # GATEWAY
+    # Entrada central da plataforma
+    # =========================================================
+    gateway:
+      build:
+        context: ..
+        dockerfile: gateway/Dockerfile
 
-    depends_on:
-      postgres:
-        condition: service_healthy
+      container_name: gateway-service
 
-  signer-service:
-    build:
-      context: ..
-      dockerfile: signer-service/Dockerfile
-    ports:
-      - "8083:8083"
-    environment:
-      HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET}
+      ports:
+        - "8080:8080"
 
-  prometheus:
-    image: prom/prometheus:v2.54.1
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    depends_on:
-      - gateway
-      - validate-service
-      - auth-service
-      - signer-service
+      environment:
+        REDIS_HOST: redis
 
-volumes:
-  postgres_data:
+        VALIDATE_SERVICE_URL: http://validate-service:8081
+
+        AUTH_SERVICE_V1_URL: http://auth-service:8082
+        AUTH_SERVICE_V2_URL: http://auth-service-v2:8085
+
+        SIGNER_SERVICE_URL: http://signer-service:8083
+
+      depends_on:
+        - redis
+        - validate-service
+        - auth-service
+        - auth-service-v2
+        - signer-service
+
+    # =========================================================
+    # VALIDATE SERVICE
+    # Anti replay / HMAC / JWT validation
+    # =========================================================
+    validate-service:
+      build:
+        context: ..
+        dockerfile: validate-service/Dockerfile
+
+      container_name: validate-service
+
+      ports:
+        - "8081:8081"
+
+      environment:
+        REDIS_HOST: redis
+
+        HMAC_CLIENT_KEY: ${HMAC_CLIENT_KEY}
+        HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET}
+
+      depends_on:
+        - redis
+
+    # =========================================================
+    # AUTH SERVICE V1
+    # Legacy authentication service
+    # =========================================================
+    auth-service:
+      build:
+        context: ..
+        dockerfile: auth-service/Dockerfile
+
+      container_name: auth-service-v1
+
+      ports:
+        - "8082:8082"
+
+      environment:
+        JWT_SECRET: ${JWT_SECRET}
+
+        SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/authdb_v1
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: postgres
+
+        SPRING_REDIS_HOST: redis
+
+      depends_on:
+        postgres:
+          condition: service_healthy
+
+    # =========================================================
+    # AUTH SERVICE V2
+    # Distributed identity platform
+    #
+    # Features:
+    # - RS256
+    # - JWKS
+    # - RBAC
+    # - Session management
+    # - Refresh token rotation
+    # =========================================================
+    auth-service-v2:
+      build:
+        context: ..
+        dockerfile: auth-service-v2/Dockerfile
+
+      container_name: auth-service-v2
+
+      ports:
+        - "8085:8085"
+
+      environment:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/authdb_v2
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: postgres
+
+        SPRING_REDIS_HOST: redis
+
+        JWT_ISSUER: identity-platform
+
+      depends_on:
+        postgres:
+          condition: service_healthy
+
+    # =========================================================
+    # SIGNER SERVICE
+    # Centralized cryptographic operations
+    # =========================================================
+    signer-service:
+      build:
+        context: ..
+        dockerfile: signer-service/Dockerfile
+
+      container_name: signer-service
+
+      ports:
+        - "8083:8083"
+
+      environment:
+        HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET}
+
+    # =========================================================
+    # PROMETHEUS
+    # Observability / metrics
+    # =========================================================
+    prometheus:
+      image: prom/prometheus:v2.54.1
+
+      container_name: prometheus
+
+      ports:
+        - "9090:9090"
+
+      volumes:
+        - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+      depends_on:
+        - gateway
+        - validate-service
+        - auth-service
+        - auth-service-v2
+        - signer-service
+
+  volumes:
+    postgres_data:
+

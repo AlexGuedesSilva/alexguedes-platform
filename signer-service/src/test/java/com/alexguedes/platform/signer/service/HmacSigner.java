@@ -175,7 +175,7 @@ class HmacSignerTest {
         assertNotEquals(sig1, sig2);
     }
 
-    @Test //Teste: método HTTP influencia assinatura
+    @Test //Teste: metodo HTTP influencia assinatura
     void shouldChangeSignatureWhenMethodChanges() {
         HmacSigner signer = new HmacSigner("secret");
 
