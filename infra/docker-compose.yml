@@ -1,5 +1,3 @@
-  version: "3.9"
-
   services:
 
     # =========================================================
@@ -42,6 +40,7 @@
 
       volumes:
         - postgres_data:/var/lib/postgresql/data
+        - ./postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
 
       healthcheck:
         test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -97,8 +96,8 @@
       environment:
         REDIS_HOST: redis
 
-        HMAC_CLIENT_KEY: ${HMAC_CLIENT_KEY}
-        HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET}
+        HMAC_CLIENT_KEY: ${HMAC_CLIENT_KEY:-demo-key}
+        HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET:-demo-secret}
 
       depends_on:
         - redis
@@ -118,7 +117,7 @@
         - "8082:8082"
 
       environment:
-        JWT_SECRET: ${JWT_SECRET}
+        JWT_SECRET: ${JWT_SECRET:-change-me-to-a-very-long-secret-key-32-bytes}
 
         SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/authdb_v1
         SPRING_DATASOURCE_USERNAME: postgres
@@ -179,7 +178,7 @@
         - "8083:8083"
 
       environment:
-        HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET}
+        HMAC_CLIENT_SECRET: ${HMAC_CLIENT_SECRET:-demo-secret}
 
     # =========================================================
     # PROMETHEUS

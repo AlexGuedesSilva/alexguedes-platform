@@ -12,8 +12,22 @@ spring:
           predicates:
             - Path=/validate/**
 
-        - id: auth
-          uri: ${AUTH_SERVICE_URL:http://localhost:8082}
+        - id: auth-v1-explicit
+          uri: ${AUTH_SERVICE_V1_URL:http://localhost:8082}
+          predicates:
+            - Path=/auth/v1/**
+          filters:
+            - RewritePath=/auth/v1/(?<segment>.*), /auth/$\{segment}
+
+        - id: auth-v2
+          uri: ${AUTH_SERVICE_V2_URL:http://localhost:8085}
+          predicates:
+            - Path=/auth/v2/**
+          filters:
+            - RewritePath=/auth/v2/(?<segment>.*), /auth/$\{segment}
+
+        - id: auth-v1-legacy
+          uri: ${AUTH_SERVICE_V1_URL:http://localhost:8082}
           predicates:
             - Path=/auth/**
 

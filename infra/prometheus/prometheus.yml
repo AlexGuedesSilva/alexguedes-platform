@@ -17,6 +17,11 @@ scrape_configs:
     static_configs:
       - targets: ["auth-service:8082"]
 
+  - job_name: auth-service-v2
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["auth-service-v2:8085"]
+
   - job_name: signer-service
     metrics_path: /actuator/prometheus
     static_configs:

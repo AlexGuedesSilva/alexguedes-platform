@@ -1,51 +1,65 @@
 # Infra
 
-A pasta `infra` contem os recursos para subir a plataforma localmente com Docker Compose. Ela orquestra Redis, Gateway, servicos da aplicacao e Prometheus.
+The `infra` folder contains the local Docker Compose environment for the Alex Guedes Platform. It orchestrates Redis, PostgreSQL, the gateway, application services and Prometheus.
 
-## Componentes
+## Files
 
-- `docker-compose.yml`: sobe todos os containers da plataforma.
-- `redis/redis.conf`: configuracao simples do Redis com AOF habilitado.
-- `prometheus/prometheus.yml`: configuracao de coleta de metricas dos servicos.
+- `docker-compose.yml`: starts the local platform.
+- `postgres/init-databases.sql`: creates the `authdb_v1` and `authdb_v2` databases on first PostgreSQL initialization.
+- `redis/redis.conf`: Redis configuration with AOF enabled.
+- `prometheus/prometheus.yml`: metrics scraping configuration.
 
-## Servicos do Docker Compose
+## Docker Compose Services
 
-| Servico | Porta | Descricao |
+| Service | Port | Description |
 | --- | --- | --- |
-| `gateway` | `8080` | Entrada unica da plataforma. |
-| `validate-service` | `8081` | Validacao HMAC e replay attack. |
-| `auth-service` | `8082` | Login, JWT e API key. |
-| `signer-service` | `8083` | Geracao de assinatura HMAC. |
-| `redis` | `6379` | Armazena rate limit e nonces. |
-| `prometheus` | `9090` | Coleta metricas dos servicos. |
+| `gateway` | `8080` | Single entry point for the platform. |
+| `validate-service` | `8081` | HMAC validation and replay attack protection. |
+| `auth-service` | `8082` | Legacy authentication service. |
+| `signer-service` | `8083` | HMAC signature generation. |
+| `auth-service-v2` | `8085` | Distributed identity platform foundation. |
+| `redis` | `6379` | Stores rate limit counters and nonces. |
+| `postgres` | `5432` | Stores identity/authentication data. |
+| `prometheus` | `9090` | Scrapes service metrics. |
 
-## Subir a plataforma
+## Start
 
 ```powershell
 cd C:\projetos2026\alexguedes-platform\infra
 docker compose up --build
 ```
 
-## Parar a plataforma
+## Stop
 
 ```powershell
 cd C:\projetos2026\alexguedes-platform\infra
 docker compose down
 ```
 
-## Fluxo de infraestrutura
+## PostgreSQL Databases
 
-1. O Redis sobe primeiro e fica disponivel para gateway e validate-service.
-2. O `validate-service` usa Redis para reservar nonces.
-3. O `gateway` usa Redis para contar requisicoes por IP.
-4. Os servicos Spring Boot sobem expondo `/actuator/prometheus`.
-5. O Prometheus coleta metricas de `gateway`, `auth-service`, `signer-service` e `validate-service`.
+On first startup, PostgreSQL creates:
 
-## Chaves usadas no Redis
+- `authdb_v1`
+- `authdb_v2`
 
-- `rate_limit:{ip}`: contador temporario de requisicoes por IP.
-- `nonce:{key}:{nonce}`: nonce reservado para impedir replay attack.
+If the `postgres_data` volume already exists, Docker will not rerun the initialization script. Recreate the volume only when you intentionally want a clean local database.
 
-## Papel na arquitetura
+## Redis Keys
 
-Esta pasta simula o ambiente de execucao local da plataforma. Em uma producao real, os mesmos conceitos seriam distribuidos em Kubernetes, ECS, Docker Swarm ou outra plataforma de orquestracao, com segredos gerenciados por ferramenta propria e metricas integradas a uma stack de observabilidade.
+- `rate_limit:{ip}`: temporary request counter per client IP.
+- `nonce:{key}:{nonce}`: reserved nonce used to block replay attacks.
+
+## Observability
+
+Prometheus scrapes:
+
+- `gateway:8080`
+- `validate-service:8081`
+- `auth-service:8082`
+- `auth-service-v2:8085`
+- `signer-service:8083`
+
+## Role In The Architecture
+
+This folder simulates a local runtime environment for a production-like microservice platform. In a real production environment, the same responsibilities would usually be handled by Kubernetes, ECS, Docker Swarm or another orchestration platform, with managed secrets and a dedicated observability stack.
